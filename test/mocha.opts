@@ -1,0 +1,4 @@
+--reporter dot
+--check-leaks
+--globals magma
+--globals name
