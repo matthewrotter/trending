@@ -18,4 +18,5 @@ The datastore is mongo
 - add d3 visualizations
 - validate input
 - clean up UX
+- implement the ttl logic
 
