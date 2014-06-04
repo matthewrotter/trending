@@ -34,6 +34,7 @@ module.exports = exports = function(app) {
   app.post(routePrefix + '/trend', function(req, res, next) {
     var trend = new Trend(req.body);
     trend.trend = trend.trend || {} ;
+    trend.createdDate = Date.now();
     trend.save(function(err, result) {
       if (err) {
         return res.send(401, err);

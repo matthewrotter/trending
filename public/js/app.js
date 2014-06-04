@@ -1,90 +1,62 @@
 (function() {
 
-  angular.module('sherpa-dash', ['ngRoute']);
+  angular.module('trending', []);
 
-  angular.module('sherpa-dash').run(['$rootScope',
-    function($rootScope) {
 
-      $rootScope.empty = function(value) {
-        return _.isEmpty(value);
-      };
-
-      $rootScope.safeApply = function(fn) {
-        var phase = this.$root.$$phase;
-        if (phase == '$apply' || phase == '$digest') {
-          if (fn && (typeof(fn) === 'function')) {
-            fn();
-          }
-        } else {
-          this.$apply(fn);
-        }
-      };
-    }
-  ]);
-
-  angular.module('sherpa-dash').controller('HomeController', ['$scope', '$location', '$http',
+  angular.module('trending').controller('MainController', ['$scope', '$location', '$http',
     function($scope, $location, $http) {
 
-      $http.get('/sherpadash/usageSummary')
-        .success(function(result) {
-          console.log(result);
+      // load all current trends
+      loadTrends();
 
-          $scope.Stats = result;
-        });
+      $scope.submit = function() {
+        $http.post('/trending/v1/trend', $scope.Trend)
+          .success(function() {
+            loadTrends();
+          });
+      };
 
-      $http.get('/sherpadash/newUsers')
-        .success(function(result) {
-          var userData = result, 
-            extent = [_.min(_.pluck(userData, 'cnt')), _.max(_.pluck(userData, 'cnt'))];
+      // handle voting
+      $scope.vote = function(trend, amt) {
+        console.log(trend, amt);
 
-          var scale = d3.scale.linear()
-            .domain(extent)
-            .range([200, 600]);
+        var dir = 'up',
+          num = amt;
+        if (amt < 0) {
+          dir = 'down';
+          num = -(amt);
+        }
 
-          d3.select('#newUsers')
-            .selectAll('div')
-            .data(userData)
-            .enter()
-            .append('div')
-            .text(function(d) {
-              return 'Year ' + d.year + ', Month ' + d.month + ': ';
-            })
-            .style('width', '200px')
-            .transition()
-            .duration(2000)
-            .style('width', function(d, i) {
-              return scale(d.cnt) + 'px';
-            })
-            .attr('class', 'bar');
-        });
+        $http({
+          method: 'PATCH',
+          url: '/trending/v1/trend/' + trend._id + '?' + dir + '=' + num
+        })
+          .success(function() {
+            loadTrends(); // BEER: should really just inline replace numbers...
+          });
+      };
 
-      $http.get('/sherpadash/tickets/month')
-        .success(function(result) {
-          var data = result, 
-            extent = [_.min(_.pluck(data, 'cnt')), _.max(_.pluck(data, 'cnt'))];
 
-          var scale = d3.scale.linear()
-            .domain(extent)
-            .range([200, 600]);
+      function loadTrends() {
+        $http.get('/trending/v1/trend')
+          .success(function(result) {
+            console.log(result);
 
-          d3.select('#ticketsPerMonth')
-            .selectAll('div')
-            .data(data)
-            .enter()
-            .append('div')
-            .text(function(d) {
-              return 'Month ' + d.month;
-            })
-            .style('width', '200px')
-            .transition()
-            .duration(2000)
-            .style('width', function(d, i) {
-              return scale(d.cnt) + 'px';
-            })
-            .attr('class', 'bar');
-        });
+            // pre-process the trends
+            $scope.Trends = _.map(result, function(trend) {
+              trend.totalUp = _.reduce(trend.trend, function(memo, date) {
+                return date.up + memo
+              }, 0);
+              trend.totalDown = _.reduce(trend.trend, function(memo, date) {
+                return date.down + memo
+              }, 0);
+              return trend;
+            });
+          });
+      }
 
     }
   ]);
+
 
 }());
